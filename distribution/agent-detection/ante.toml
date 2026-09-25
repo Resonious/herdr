@@ -1,0 +1,80 @@
+id = "ante"
+version = "2026.09.25.1"
+min_engine_version = 2
+updated_at = "2026-09-25T00:00:00Z"
+
+# Evidence: live bottom-buffer captures from Ante 0.2.4 in a 200x50 pane,
+# driven through prompts in normal and yolo permission modes.
+#
+# Ante emits the OSC 0 title "Ante" on startup and never changes it across
+# idle, working, and blocked turns, so the title carries no state signal and
+# all rules are screen-based.
+#
+# Idle shows an empty `❯ ▎` composer between two horizontal rules, with a
+# footer of two rows: `<model>(<effort>) · <provider> · repo(<branch>)` and
+# `<permission mode> mode (shift+tab to cycle) · term: <terminal mode>`.
+#
+# Working turns render a live activity line above the composer with a glyph
+# label and, once streaming starts, an interrupt hint:
+#   "✻ Thinking… (ctrl+o expand)"
+#   "◈ Running… (esc / ctrl-c to interrupt · ⇣ 63 tokens)"
+# Yolo turns can show "◆ Running…" with no interrupt hint, so the activity
+# label itself carries working, and the interrupt hint outranks it.
+#
+# Blocked approval dialogs replace the composer with a numbered choice list:
+#   "> 1. Yes"
+#   "  5. No, and tell Ante what to do differently"
+# and a footer "Esc to cancel · Tab to see changes". The option pair anchors
+# the rule so transcript text quoting a single option cannot block.
+
+[[rules]]
+id = "approval_choice_blocked"
+state = "blocked"
+priority = 1000
+region = "bottom_non_empty_lines(14)"
+visible_blocker = true
+all = [
+  { line_regex = ['^\s*>?\s*1\.\s+Yes\s*$'] },
+  { line_regex = ['^\s*[0-9]\.\s+No, and tell Ante what to do differently\s*$'] },
+]
+not = [
+  { contains = ["esc / ctrl-c to interrupt"] },
+]
+
+[[rules]]
+id = "approval_footer_blocked"
+state = "blocked"
+priority = 990
+region = "bottom_non_empty_lines(3)"
+visible_blocker = true
+contains = ["Esc to cancel", "Tab to see changes"]
+
+[[rules]]
+id = "interrupt_hint_working"
+state = "working"
+priority = 900
+region = "bottom_non_empty_lines(14)"
+visible_working = true
+contains = ["esc / ctrl-c to interrupt"]
+
+[[rules]]
+id = "activity_label_working"
+state = "working"
+priority = 800
+region = "bottom_non_empty_lines(14)"
+visible_working = true
+line_regex = ['^\s*[✻◈◆]\s+(Thinking|Running)…(\s|$)']
+
+[[rules]]
+id = "permission_footer_idle"
+state = "idle"
+priority = 700
+region = "bottom_non_empty_lines(3)"
+visible_idle = true
+contains = ["mode (shift+tab to cycle)"]
+not = [
+  { contains = ["esc / ctrl-c to interrupt"] },
+  { contains = ["Esc to cancel", "Tab to see changes"] },
+  { line_regex = ['^\s*[✻◈◆]\s+(Thinking|Running)…(\s|$)'] },
+  { contains = ["tell Ante what to do differently"] },
+]
